@@ -5,7 +5,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from webdriver_manager.chrome import ChromeDriverManager
-import pprint
 
 # Chromeドライバのセットアップ
 options = webdriver.ChromeOptions()
@@ -21,14 +20,16 @@ os.chmod(chromedriver_path, 0o755)
 driver = webdriver.Chrome(service=Service(chromedriver_path), options=options)
 
 # 例として「老舗」をキーワードにAmazon検索（Amazon.co.jp）を実施
-search_keyword = "絵の具"
+search_keyword = "ねんど"
 url = f"https://www.amazon.co.jp/s?k={search_keyword}"
 driver.get(url)
-time.sleep(3)  # ページ読み込み待ち
 
 # 以下、既存のスクレイピング処理（例）
 results = []
-for page in range(1, 3):
+page = 0
+while True:
+    page += 1
+    time.sleep(3)  # ページ読み込み待ち 
     print(f"Processing page: {page}")
     products = driver.find_elements(By.XPATH, '//div[@data-component-type="s-search-result"]')
     
@@ -50,16 +51,18 @@ for page in range(1, 3):
         
         try:
             seller_name = driver.find_element(By.XPATH, '//a[@id="bylineInfo"]').text
+            seller_name = seller_name.replace("のストアを表示","").replace("ブランド: ","")
         except Exception:
             seller_name = ""
         
         try:
             review_text = driver.find_element(By.XPATH, '//span[@id="acrCustomerReviewText"]').text
+            review_text = review_text.replace("個の評価","").replace(",","")
         except Exception:
             review_text = ""
         
         try:
-            seller_info_link = driver.find_element(By.XPATH, '//a[contains(text(), "販売者情報")]').get_attribute("href")
+            seller_info_link = driver.find_element(By.XPATH, '//a[@id="bylineInfo"]').get_attribute("href")
             driver.execute_script("window.open(arguments[0]);", seller_info_link)
             driver.switch_to.window(driver.window_handles[-1])
             time.sleep(3)
@@ -87,6 +90,7 @@ for page in range(1, 3):
         results.append({
             "商品タイトル": product_title,
             "会社名（販売者）": seller_name,
+            "会社ページ": seller_info_link,
             "出品カテゴリ": selling_category,
             "所在地": location,
             "レビュー数": review_text,
@@ -95,16 +99,15 @@ for page in range(1, 3):
         
         driver.close()
         driver.switch_to.window(driver.window_handles[0])
+        # break
     
     try:
-        next_page = driver.find_element(By.XPATH, '//li[@class="a-last"]/a')
+        next_page = driver.find_element(By.XPATH, '//div[@role="navigation"]/span/ul/li[last()]/span/a')
         next_page.click()
-        time.sleep(3)
+        break
     except Exception:
         print("次ページが見つかりませんでした。")
         break
-
-print(results)
 
 df = pd.DataFrame(results)
 df.to_csv("amazon_ec_consult_list.csv", index=False, encoding="utf-8-sig")
