@@ -24,7 +24,7 @@ def get_contact_info_from_gpt(seller_info_text):
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "あなたは優秀なアシスタントです。与えられたテキスト情報を参考に、連絡可能なメールアドレスと会社のURLを出力してください。"},
-                {"role": "user", "content": f"以下のテキスト情報を参考に、連絡可能なメールアドレスと会社のURLを出力してください。このテキストには含まれていないため、GPT内にある情報から出力してください。\n\n{seller_info_text}"}
+                {"role": "user", "content": f"以下のテキスト情報を参考に、連絡可能なメールアドレスと会社のURLを出力してください。このテキストには含まれていないため、GPT内にある情報を参考に出力してください。\n\n{seller_info_text}"}
             ],
             temperature=0.3
         )
@@ -80,7 +80,7 @@ def get_seller_info(driver, seller_url):
         time.sleep(3)  # ページ読み込み待機
         
         # 販売者情報の取得
-        seller_info["company_about"] = get_element_text(driver, '//*[@id="spp-expander-about-seller"]/div[1]/div[2] | //*[@id="spp-expander-about-seller"]/div')
+        seller_info["company_about"] = get_element_text(driver, "(//*[@id='spp-expander-about-seller']/div[1]/div[2] | //*[@id='spp-expander-about-seller']/div)[last()]")
         seller_info["store_evaluation"] = get_element_text(
             driver, '//*[@id="seller-info-feedback-summary"]/span/a')
         
@@ -108,9 +108,7 @@ def get_seller_info(driver, seller_url):
     
     return seller_info
 
-def scrape_seller_info():
-    # CSVファイルの読み込み
-    df = pd.read_csv('towel.csv')
+def scrape_seller_info(df):
     out_df = pd.DataFrame(columns=list(df.columns) + ['会社名', '会社電話番号', '会社住所', '会社評価', '会社概要', 'メールアドレス', '会社URL'])
     
     # Chromeドライバのセットアップ
@@ -166,4 +164,6 @@ if __name__ == "__main__":
     env_path = os.path.join(os.path.dirname(__file__), '.env')
     load_dotenv(env_path)
     print(f".envファイルの読み込み状態: {os.path.exists(env_path)}")
-    scrape_seller_info()
+
+    df = pd.read_csv('list_jp.csv')
+    scrape_seller_info(df)
