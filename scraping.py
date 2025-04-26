@@ -41,6 +41,24 @@ def get_contact_info_from_gpt(seller_info_text):
         print(f"GPT APIエラー: {e}")
         return ""
 
+def remove_duplicate_company(df):
+    # メールアドレス列で重複を削除（最初の出現を保持）
+    df_cleaned = df.drop_duplicates(subset=['ブランド'], keep='first')
+    
+    print(f"重複削除前の行数: {len(df)}")
+    print(f"重複削除後の行数: {len(df_cleaned)}")
+    print(f"削除された重複行数: {len(df) - len(df_cleaned)}")
+    print("--------------------------------")
+    
+    return df_cleaned
+
+def remove_other_jp(df):
+    df_cleaned = df[df['セラー所在地'] == 'JP']
+    print(f"日本の行数: {len(df_cleaned)}")
+    print(f"日本以外の行数: {len(df) - len(df_cleaned)}")
+    print("--------------------------------")
+    return df_cleaned
+
 def get_element_text(element, xpath, default=""):
     """要素のテキストを安全に取得"""
     try:
@@ -113,12 +131,16 @@ def scrape_seller_info(df):
     
     # Chromeドライバのセットアップ
     options = webdriver.ChromeOptions()
+    options.add_argument('--headless')
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--disable-dev-shm-usage')
     options.add_argument('--window-size=1920,1080')
     
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    df = remove_duplicate_company(df)
+    df = remove_other_jp(df)
+    df.reset_index(drop=True, inplace=True)
     
     for index, row in df.iterrows():
         seller_url = row['セラーリンク']
@@ -126,17 +148,17 @@ def scrape_seller_info(df):
             continue
             
         try:
-            print(f"処理中: {index + 1}/{len(df)}")
+            print(f"\r処理中: {index + 1}/{len(df)}", end="")
             
             # 販売者情報の取得
             seller_info = get_seller_info(driver, seller_url)
-            if seller_info["company_email"] == "" or seller_info["company_url"] == "":
-                gpt_result = get_contact_info_from_gpt(row["セラー情報"])
+            # if seller_info["company_email"] == "" or seller_info["company_url"] == "":
+            #     gpt_result = get_contact_info_from_gpt(row["セラー情報"])
 
-            if seller_info["company_email"] == "":
-                seller_info["company_email"] = gpt_result[0]
-            if seller_info["company_url"] == "":
-                seller_info["company_url"] = gpt_result[1]
+            # if seller_info["company_email"] == "":
+            #     seller_info["company_email"] = gpt_result[0]
+            # if seller_info["company_url"] == "":
+            #     seller_info["company_url"] = gpt_result[1]
             
             # 元のデータフレームに新しい情報を追加
             out_df.loc[index] = df.loc[index].tolist() + [
@@ -151,19 +173,18 @@ def scrape_seller_info(df):
             
             # 進捗を保存
             out_df.to_csv('towel_updated.csv', index=False, encoding='utf-8-sig')
-            print(f"進捗を保存しました: {index + 1}/{len(df)}")
             
         except Exception as e:
-            print(f"エラーが発生しました: {e}")
+            print(f"\nエラーが発生しました: {e}")
             continue
     
     driver.quit()
-    print("スクレイピング完了！ CSVファイルに保存しました。")
+    print("\nスクレイピング完了！ CSVファイルに保存しました。")
 
 if __name__ == "__main__":
     env_path = os.path.join(os.path.dirname(__file__), '.env')
     load_dotenv(env_path)
     print(f".envファイルの読み込み状態: {os.path.exists(env_path)}")
 
-    df = pd.read_csv('list_jp.csv')
+    df = pd.read_csv('./csv/towel.csv')
     scrape_seller_info(df)
