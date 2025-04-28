@@ -10,6 +10,13 @@ import json
 from dotenv import load_dotenv
 import os
 
+
+
+CSV_PATH = './csv/towel.csv'
+OUTPUT_PATH = './csv/towel_updated.csv'
+
+
+
 def get_contact_info_from_gpt(seller_info_text):
     """GPTを使用してセラー情報からメールアドレスと会社URLを抽出"""
     try:
@@ -152,13 +159,13 @@ def scrape_seller_info(df):
             
             # 販売者情報の取得
             seller_info = get_seller_info(driver, seller_url)
-            # if seller_info["company_email"] == "" or seller_info["company_url"] == "":
-            #     gpt_result = get_contact_info_from_gpt(row["セラー情報"])
+            if seller_info["company_email"] == "" or seller_info["company_url"] == "":
+                gpt_result = get_contact_info_from_gpt(row["セラー情報"])
 
-            # if seller_info["company_email"] == "":
-            #     seller_info["company_email"] = gpt_result[0]
-            # if seller_info["company_url"] == "":
-            #     seller_info["company_url"] = gpt_result[1]
+            if seller_info["company_email"] == "":
+                seller_info["company_email"] = gpt_result[0]
+            if seller_info["company_url"] == "":
+                seller_info["company_url"] = gpt_result[1]
             
             # 元のデータフレームに新しい情報を追加
             out_df.loc[index] = df.loc[index].tolist() + [
@@ -172,7 +179,7 @@ def scrape_seller_info(df):
             ]
             
             # 進捗を保存
-            out_df.to_csv('towel_updated.csv', index=False, encoding='utf-8-sig')
+            out_df.to_csv(OUTPUT_PATH, index=False, encoding='utf-8-sig')
             
         except Exception as e:
             print(f"\nエラーが発生しました: {e}")
@@ -186,5 +193,5 @@ if __name__ == "__main__":
     load_dotenv(env_path)
     print(f".envファイルの読み込み状態: {os.path.exists(env_path)}")
 
-    df = pd.read_csv('./csv/towel.csv')
+    df = pd.read_csv(CSV_PATH)
     scrape_seller_info(df)
