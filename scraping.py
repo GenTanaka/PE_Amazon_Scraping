@@ -12,8 +12,8 @@ import os
 
 
 
-CSV_PATH = './csv/towel.csv'
-OUTPUT_PATH = './csv/towel_updated.csv'
+CSV_PATH = './csv/input.csv'
+OUTPUT_PATH = './csv/output.csv'
 
 
 
